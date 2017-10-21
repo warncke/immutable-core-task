@@ -2,7 +2,7 @@
   "author": "Ersun Warncke <ersun.warncke@gmail.com>",
   "dependencies": {
     "immutable-ai": "0.8.0",
-    "immutable-core": "2.2.20",
+    "immutable-core": "2.2.21",
     "immutable-error": "0.1.3",
     "immutable-global": "0.1.3"
   },
@@ -26,5 +26,5 @@
   "scripts": {
     "test": "mocha"
   },
-  "version": "0.0.2"
+  "version": "0.0.3"
 }
