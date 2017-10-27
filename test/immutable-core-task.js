@@ -103,34 +103,6 @@ describe('immutable-core-task', function () {
         assert.isTrue(ImmutableCore.hasMethod('fooTask.foo'))
     })
 
-    it('should instantiate new task instance', async function () {
-        var task = new ImmutableCoreTask({
-            methods: { bar: () => {} },
-            name: 'foo',
-            steps: [ { method: 'bar' } ],
-        })
-        // create new instance
-        var instance = await task.new()
-        // check properties
-        assert.strictEqual(instance.ImmutableCoreTaskInstance, true)
-        assert.strictEqual(instance.class, 'ImmutableCoreTaskInstance')
-    })
-
-    it('should instantiate new task instance with ImmutableAI', async function () {
-        var task = new ImmutableCoreTask({
-            methods: { bar: () => {} },
-            name: 'foo',
-            steps: [ { method: 'bar' } ],
-        })
-        // create new ImmutableAI instance
-        var ai = ImmutableAI({session: {}})
-        // create new instance
-        var instance = await ai.task.foo.new({})
-        // check properties
-        assert.strictEqual(instance.ImmutableCoreTaskInstance, true)
-        assert.strictEqual(instance.class, 'ImmutableCoreTaskInstance')
-    })
-
     it('should set continueOnError flag for task', async function () {
         var task = new ImmutableCoreTask({
             continueOnError: true,

@@ -481,3 +481,86 @@ steps are safe to run `async`.
 Strictly defined input/output will also typically result in much less data
 being passed to each method call and stored in the task data. This makes task
 execution more efficient and easier to analyze, moodify and debug.
+
+## Task runner
+
+    var task = new ImmutableCoreTaskInstance({record: record})
+
+    await taskInstance.run()
+
+The task runner loads task instance records where the `nextRunTime` is less than
+or equal to the current time and then instantiates an ImmutableCoreTaskInstance
+from the record.
+
+The task runner then calls `run` which will run as many steps as possible until
+the task either finishes or hits a break, such as waiting to retry after an
+error.
+
+## Task schema
+
+    {
+        data: {},
+        name: 'taskName',
+        steps: [
+            { ... },
+        ],
+    }
+
+ImmutableCoreTasks are persisted using the ImmutableCoreModel specified by
+`taskModel`.
+
+The `sync` method is used to make sure the current task definition is persisted
+to the database.
+
+When a task instance is executed the `taskId` will be used to fetch the version
+of the task that the instance was created with.
+
+If the steps in a task are changed all current task instances will run the task
+steps that they were created with.
+
+## Task instance schema
+
+    {
+        data: {},
+        nextRunTime: '2001-01-01 01:01:01',
+        status: {
+            complete: false,
+            running: false,
+            step: 0,
+            success: false,
+        },
+        taskId: '<hex task id>',
+        taskName: 'foo',
+    }
+
+When a new task instance is created it will be persisted using
+the ImmutableCoreModel specified by `instanceModel`.
+
+The `status` object is used to track the status of task instance execution.
+
+The `status` object changes from one execution run to the next and not all
+properties will always be present but the complete history of the task instance
+execution can always be retrieved by looking at the history of the instance
+revisions.
+
+`nextRunTime` will either have the next scheduled run time for execution of the
+task or will be `NULL` if task execution has completed.
+
+### Status properties
+
+| name          | type      | description                                      |
+|---------------|-----------|--------------------------------------------------|
+| complete      | boolean   | set true when task instance execution complete   |
+| running       | boolean   | true when step is being executed                 |
+| step          | integer   | current or next step to execute                  |
+| success       | boolean   | set true if complete without unhandled errors    |
+
+### Running first step of task
+
+    {
+        running: true,
+        step: 0,
+    }
+
+The `run` method will update the `status` of the task instance to
+`running: true` and update `nextRunTime` to the `timeout` value for the step.
