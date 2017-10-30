@@ -14,12 +14,15 @@ sinon.assert.expose(chai.assert, { prefix: '' })
 
 describe('immutable-core-task nextRunTime', function () {
 
-    // create new instance with dummy record
-    var instance = new ImmutableCoreTaskInstance({
-        record: {},
-        task: {
-            ImmutableCoreTask: true,
-        },
+    var instance
+
+    before(function () {
+        // create new instance with dummy record
+        instance = new ImmutableCoreTaskInstance({
+            task: {
+                ImmutableCoreTask: true,
+            },
+        })
     })
 
     it('should return current time with no args', function () {
@@ -48,7 +51,7 @@ describe('immutable-core-task nextRunTime', function () {
         assert.match(instance.nextRunTime(moment.utc('2017-10-26 01:10:07')), '2017-10-26 01:10:07')
     })
 
-    it('should format duration starting with +', function () {
+    it('should format duration', function () {
         // get current time
         var currentTime = moment.utc().add({
             days: 1,
@@ -56,14 +59,14 @@ describe('immutable-core-task nextRunTime', function () {
             minutes: 13,
         })
         // get next run time from duration
-        var nextRunTime = instance.nextRunTime('+1d23h13m')
+        var nextRunTime = instance.nextRunTime('1d23h13m')
         // check for match or match on next second in case clock switched
         assert.ok(currentTime.format('YYYY-MM-DD HH:mm:ss') === nextRunTime || currentTime.add(1, 'seconds').format('YYYY-MM-DD HH:mm:ss') === nextRunTime)
     })
 
     it('should throw error on invalid duration', function () {
         assert.throws(() => {
-            instance.nextRunTime('+1x')
-        }, 'ImmutableCoreTaskInstance Error: invalid time +1x')
+            instance.nextRunTime('1x')
+        }, 'ImmutableCoreTaskInstance Error: invalid time 1x')
     })
 })

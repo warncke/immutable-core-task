@@ -31,7 +31,7 @@ const connectionParams = {
     user: dbUser,
 }
 
-describe.only('immutable-core-task instance', function () {
+describe('immutable-core-task instance', function () {
 
     var fooTask, instanceModel, instanceModelGlboal, taskModel,
         taskModelGlobal
@@ -121,15 +121,60 @@ describe.only('immutable-core-task instance', function () {
         // check properties
         assert.strictEqual(instance.ImmutableCoreTaskInstance, true)
         assert.strictEqual(instance.class, 'ImmutableCoreTaskInstance')
+        assert.isObject(instance.record)
+        assert.strictEqual(instance.record.class, 'ImmutableCoreModelRecord')
+        assert.isObject(instance.task)
+        assert.strictEqual(instance.task.class, 'ImmutableCoreTask')
     })
 
     it('should instantiate task instance from record', async function () {
         // create new instance
         var instance = await fooTask.new()
         // create instance from record
-        var newInstnace = new ImmutableCoreTaskInstance({record: instance.record})
+        var newInstance = new ImmutableCoreTaskInstance({record: instance.record})
+        // wait for instance to initialize
+        await newInstance.promise
+        // check that record and task are set on instance
+        assert.isObject(newInstance.record)
+        assert.strictEqual(newInstance.record.class, 'ImmutableCoreModelRecord')
+        assert.isObject(newInstance.task)
+        assert.strictEqual(newInstance.task.class, 'ImmutableCoreTask')
+    })
 
-        console.log(newInstnace)
+    it('should instantiate task instance from record', async function () {
+        // create new instance
+        var instance = await fooTask.new()
+        // create instance from record
+        var newInstance = new ImmutableCoreTaskInstance({record: instance.record})
+        // wait for instance to initialize
+        await newInstance.promise
+        // check that record and task are set on instance
+        assert.isObject(newInstance.record)
+        assert.strictEqual(newInstance.record.class, 'ImmutableCoreModelRecord')
+        assert.isObject(newInstance.task)
+        assert.strictEqual(newInstance.task.class, 'ImmutableCoreTask')
+    })
+
+    it('should instantiate task instance from record with old task', async function () {
+        // create new instance
+        var instance = await fooTask.new()
+        // create new foo task
+        fooTask = new ImmutableCoreTask({
+            allowOverride: true,
+            instanceModel: instanceModel,
+            methods: { bar: () => {} },
+            name: 'foo',
+            steps: [ { method: 'bar' }, { method: 'bar' } ],
+            taskModel: taskModel,
+        })
+        // sync task
+        await fooTask.sync()
+        // create instance from record
+        var newInstance = new ImmutableCoreTaskInstance({record: instance.record})
+        // wait for instance to initialize
+        await newInstance.promise
+        // should have original task
+        assert.strictEqual(newInstance.task.taskId, instance.task.taskId)
     })
 
 })
