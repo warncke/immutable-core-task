@@ -31,7 +31,7 @@ const connectionParams = {
     user: dbUser,
 }
 
-describe.only('immutable-core-task-instance run', function () {
+describe('immutable-core-task-instance run', function () {
 
     var instance, instanceModel, instanceModelGlboal, task, taskModel,
         taskModelGlobal, sandbox
@@ -76,6 +76,7 @@ describe.only('immutable-core-task-instance run', function () {
                     unique: true,
                 },
             },
+            compression: false,
             database: database,
             name: 'task',
         })
@@ -93,6 +94,7 @@ describe.only('immutable-core-task-instance run', function () {
                     type: 'id',
                 },
             },
+            compression: false,
             database: database,
             name: 'taskInstance',
         })
@@ -118,26 +120,15 @@ describe.only('immutable-core-task-instance run', function () {
             name: 'foo',
             steps: [
                 {
-                    check: 'check1',
-                    error: {
-                        check: 'errorCheck1',
-                        method: 'error1',
-                        retry: true,
-                    },
+                    error: 'error1',
                     method: 'method1',
-                    retry: true,
-                    reverse: {
-                        check: 'reverseCheck1',
-                        method: 'reverse1',
-                        retry: true,
-                    },
                 },
                 {
-                    async: true,
                     method: 'method2',
                 },
                 {
                     method: 'method3',
+                    retry: true,
                 },
             ],
             taskModel: taskModel,
@@ -183,6 +174,7 @@ describe.only('immutable-core-task-instance run', function () {
             assert.isTrue(instance.data.complete)
             assert.isTrue(instance.data.success)
             assert.isUndefined(instance.data.status)
+            assert.isUndefined(instance.data.nextRunTime)
             assert.deepEqual(instance.data.data, {
                 bam: true,
                 bar: true,
@@ -191,6 +183,94 @@ describe.only('immutable-core-task-instance run', function () {
             })
         })
 
+    })
+
+    describe('when method without retry has error', function () {
+
+        var error
+
+        beforeEach(function () {
+            error = {
+                code: 100,
+                data: {foo: true},
+                message: 'error',
+                stack: 'stack',
+            }
+
+            method1.resolves({bam: true})
+            method2.rejects(error)
+        })
+
+        it('it should complete task with success:false', async function () {
+            // run task
+            await instance.run()
+            // check that methods run
+            assert.calledOnce(method1)
+            assert.calledOnce(method2)
+            assert.notCalled(method3)
+            // get current instance
+            instance = await instanceModel.query({
+                current: true,
+                one: true,
+                where: {id: instance.record.id},
+            })
+            // check data state
+            assert.isTrue(instance.data.complete)
+            assert.isFalse(instance.data.success)
+            assert.isUndefined(instance.data.nextRunTime)
+            assert.deepEqual(instance.data.status, {
+                error: error,
+                stepNum: 1,
+                try: 1,
+            })
+            assert.deepEqual(instance.data.data, {
+                bam: true,
+                session: session,
+            })
+        })
+    })
+
+    describe.skip('when method with error handler has error', function () {
+
+        var error
+
+        beforeEach(function () {
+            error = {
+                code: 100,
+                data: {foo: true},
+                message: 'error',
+                stack: 'stack',
+            }
+
+            method1.rejects(error)
+        })
+
+        it('it should complete task with success:true', async function () {
+            // run task
+            await instance.run()
+            // check that methods run
+            assert.calledOnce(method1)
+            assert.notCalled(method2)
+            assert.notCalled(method3)
+            // get current instance
+            instance = await instanceModel.query({
+                current: true,
+                one: true,
+                where: {id: instance.record.id},
+            })
+            // check data state
+            assert.isTrue(instance.data.complete)
+            assert.isTrue(instance.data.success)
+            assert.isUndefined(instance.data.nextRunTime)
+            assert.deepEqual(instance.data.status, {
+                error: error,
+                stepNum: 1,
+                try: 1,
+            })
+            assert.deepEqual(instance.data.data, {
+                session: session,
+            })
+        })
     })
 
 })
