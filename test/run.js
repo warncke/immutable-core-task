@@ -31,7 +31,7 @@ const connectionParams = {
     user: dbUser,
 }
 
-describe('immutable-core-task-instance run', function () {
+describe.only('immutable-core-task-instance run', function () {
 
     var instance, instanceModel, instanceModelGlboal, task, taskModel,
         taskModelGlobal, sandbox
