@@ -36,8 +36,8 @@ describe.only('immutable-core-task-instance run', function () {
     var instance, instanceModel, instanceModelGlboal, task, taskModel,
         taskModelGlobal, sandbox
 
-    var check1, error1, errorCheck1, method1, method2, method3, reverse1,
-        reverseCheck1
+    var check1, error1, error3, errorCheck1, method1, method2, method3,
+        reverse1, reverseCheck1
 
     // create database connection to use for testing
     var database = new ImmutableDatabaseMariaSQL(connectionParams)
@@ -53,14 +53,13 @@ describe.only('immutable-core-task-instance run', function () {
         // create stubs for task methods
         check1 = sandbox.stub()
         error1 = sandbox.stub()
+        error3 = sandbox.stub()
         errorCheck1 = sandbox.stub()
         method1 = sandbox.stub()
         method2 = sandbox.stub()
         method3 = sandbox.stub()
         reverse1 = sandbox.stub()
         reverseCheck1 = sandbox.stub()
-        // suppress console.error
-        console.error = sandbox.stub()
         // reset global data
         ImmutableCore.reset()
         ImmutableCoreModel.reset()
@@ -112,6 +111,7 @@ describe.only('immutable-core-task-instance run', function () {
                 check1: check1,
                 error1: error1,
                 errorCheck1: errorCheck1,
+                error3: error3,
                 method1: method1,
                 method2: method2,
                 method3: method3,
@@ -128,6 +128,7 @@ describe.only('immutable-core-task-instance run', function () {
                     method: 'method2',
                 },
                 {
+                    error: 'error3',
                     method: 'method3',
                     retry: true,
                 },
@@ -264,6 +265,66 @@ describe.only('immutable-core-task-instance run', function () {
                 session: session,
             })
         })
+    })
+
+    describe('when method with retry has error', function () {
+
+        var error
+
+        beforeEach(function () {
+            error = {
+                code: 100,
+                data: {foo: true},
+                message: 'error',
+                stack: 'stack',
+            }
+
+            method3.onCall(0).rejects(error)
+            method3.onCall(1).resolves()
+        })
+
+        it('should retry method', async function () {
+            // run task
+            await instance.run()
+            // check that methods run
+            assert.calledOnce(method1)
+            assert.calledOnce(method2)
+            assert.calledOnce(method3)
+            assert.notCalled(error3)
+            // get current instance record
+            var record = await instanceModel.query({
+                current: true,
+                one: true,
+                where: {id: instance.record.id},
+            })
+            // get original instance record
+            var origRecord = await instanceModel.query({
+                one: true,
+                where: {id: instance.record.originalId},
+            })
+            // check that nextRunTime changed
+            assert.notStrictEqual(record.data.nextRunTime, origRecord.data.nextRunTime)
+            // check data state
+            assert.isFalse(record.data.complete)
+            assert.isUndefined(record.data.success)
+            // create new instance from record
+            instance = new ImmutableCoreTaskInstance({record: record})
+            // run task again
+            await instance.run()
+            // retry method should have been called
+            assert.calledTwice(method3)
+            assert.notCalled(error3)
+            // get current instance record
+            record = await instanceModel.query({
+                current: true,
+                one: true,
+                where: {id: instance.record.id},
+            })
+            // check data
+            assert.isTrue(record.data.complete)
+            assert.isTrue(record.data.success)
+        })
+
     })
 
 })
