@@ -13,6 +13,7 @@ const sinon = require('sinon')
 /* application modules */
 const ImmutableCoreTask = require('../lib/immutable-core-task')
 const ImmutableCoreTaskInstance = require('../lib/immutable-core-task-instance')
+const initModels = require('./lib/init-models')
 
 /* chai config */
 const assert = chai.assert
@@ -31,10 +32,9 @@ const connectionParams = {
     user: dbUser,
 }
 
-describe.only('immutable-core-task-instance run', function () {
+describe('immutable-core-task-instance run', function () {
 
-    var instance, instanceModel, instanceModelGlboal, task, taskModel,
-        taskModelGlobal, sandbox
+    var instance, instanceModel, task, taskModel, sandbox
 
     var check1, error1, error3, errorCheck1, method1, method2, method3,
         reverse1, reverseCheck1
@@ -60,50 +60,10 @@ describe.only('immutable-core-task-instance run', function () {
         method3 = sandbox.stub()
         reverse1 = sandbox.stub()
         reverseCheck1 = sandbox.stub()
-        // reset global data
-        ImmutableCore.reset()
-        ImmutableCoreModel.reset()
-        ImmutableGlobal.reset()
-        // drop any test tables if they exist
-        await database.query('DROP TABLE IF EXISTS task')
-        await database.query('DROP TABLE IF EXISTS taskInstance')
-        // create task model
-        taskModelGlobal = new ImmutableCoreModel({
-            columns: {
-                name: {
-                    immutable: true,
-                    type: 'string',
-                    unique: true,
-                },
-            },
-            compression: false,
-            database: database,
-            name: 'task',
-        })
-        // create instance model
-        instanceModelGlboal = new ImmutableCoreModel({
-            columns: {
-                nextRunTime: {
-                    index: true,
-                    null: true,
-                    type: 'time',
-                },
-                taskId: {
-                    index: true,
-                    null: false,
-                    type: 'id',
-                },
-            },
-            compression: false,
-            database: database,
-            name: 'taskInstance',
-        })
-        // sync models
-        await taskModelGlobal.sync()
-        await instanceModelGlboal.sync()
-        // get local models
-        taskModel = taskModelGlobal.session(session)
-        instanceModel = instanceModelGlboal.session(session)
+        // initialize models
+        var models = await initModels({database, session})
+        instanceModel = models.instanceModel
+        taskModel = models.taskModel
         // create foo task
         task = new ImmutableCoreTask({
             instanceModel: instanceModel,

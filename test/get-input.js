@@ -18,6 +18,7 @@ describe('immutable-core-task-instance getInput', function () {
             foo: { bar: 1 },
             bam: true,
             baz: false,
+            session: 'session',
         }
 
         var map = {
@@ -28,6 +29,7 @@ describe('immutable-core-task-instance getInput', function () {
         var expected = {
             bam: { baz: 1 },
             baz: false,
+            session: 'session',
         }
 
         assert.deepEqual(getInput(origInput, map), expected)

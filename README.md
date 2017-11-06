@@ -235,11 +235,14 @@ prevents that success from being recorded in the database.
 A `check` method can be specified that checks if the step has already been
 completed.
 
-The `check` method will be called with the exact same arguments that the step
-method was called with.
+The `check` method will be called with the same arguments that the step method
+was called with unless a custom `input` map is specified.
 
-If the `check` method resolves `true` then the step will be marked as complete
-without retrying it again.
+If the `check` method resolves with a value then the step will be marked as
+complete without retrying it again.
+
+If `check` resolves with a value that value will be merged into the task `data`
+using either the same `output` map as the `method` or a custom `output` map.
 
 If the `check` method encounters an error then the step enters an error state,
 the `method` will not be retried, and the `error` method will be called if
