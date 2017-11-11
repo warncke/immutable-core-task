@@ -64,15 +64,13 @@ task instance will be merged over this `data`.
 
 Every task must have one or more `steps`.
 
-Each step in the flow will be executed in order except for `async` steps which
-will not block the execution of the steps following them.
+Each step in the flow will be executed in order.
 
 Each step must have a `method` which is the code that will be executed for the
 step.
 
 The `method` can be a reference to a method defined on the task itself like
-`authorizeCreditCard` of `checkDeliveryStatus` or it can be a reference to
-a method on another
+`authorizeCreditCard` or it can be a reference to a method on another
 [Immutable Core](https://www.npmjs.com/package/immutable-core) module like
 `module.email.orderReceived`.
 
@@ -138,7 +136,7 @@ available task runner.
 ### Task step execution
 
 Whenever a task is saved a `nextRunTime` value will be set. When a new task
-instance is created the `nextRunTime` will be the curren time unless it is
+instance is created the `nextRunTime` will be the current time unless it is
 specifically scheduled for the future.
 
 Task runners will process tasks in order of their `nextRunTime` once that time
@@ -163,37 +161,37 @@ the task and attempt to complete it.
 
 ## Error handling
 
-### Task continueOnError
+### Task ignoreError
 
     const orderTask = new ImmutableCoreTask({
-        continueOnError: true
+        : true
     })
 
-When `continueOnError` is set to true then tasks will continue to process and
+When `ignoreError` is set to true then tasks will continue to process and
 will be completed successfully even if one or more steps fail.
 
 This option is false by default.
 
-Setting `continueOnError` true for the task means that errors on any step will
-not prevent the task from completing successfully unless `continueOnError` is
+Setting `ignoreError` true for the task means that errors on any step will
+not prevent the task from completing successfully unless `ignoreError` is
 set to false for specific steps.
 
-### Step continueOnError
+### Step ignoreError
 
     const orderTask = new ImmutableCoreTask({
         steps: [
             {
-                continueOnError: true,
+                ignoreError: true,
                 method: 'module.email.orderReceived',
                 retry: true,
             },
         ],
     })
 
-Any `continueOnError` option set at the step level will override the task level
+Any `ignoreError` option set at the step level will override the task level
 configuration.
 
-When `continueOnError` is used with `retry` processing of later steps will not
+When `ignoreError` is used with `retry` processing of later steps will not
 continue until after all retry attempts have been made.
 
 ### Retry
@@ -218,6 +216,20 @@ only be called if all retry attempts fail.
 
 `retry` can also be specified for `check`, `error` and `reverse` methods.
 
+### Retry all
+
+    const orderTask = new ImmutableCoreTask({
+        retry: true,
+        steps: [
+            {
+                method: 'module.email.orderReceived',
+            },
+        ],
+    })
+
+When `retry` is set to true in the top level task args all methods will have
+`retry` set to true.
+
 ### Check
 
     const orderTask = new ImmutableCoreTask({
@@ -241,8 +253,8 @@ was called with unless a custom `input` map is specified.
 If the `check` method resolves with a value then the step will be marked as
 complete without retrying it again.
 
-If `check` resolves with a value that value will be merged into the task `data`
-using either the same `output` map as the `method` or a custom `output` map.
+If `check` returns a value that value will be only be merged into the task
+`data` if an `output` map is defined.
 
 If the `check` method encounters an error then the step enters an error state,
 the `method` will not be retried, and the `error` method will be called if
@@ -285,14 +297,14 @@ retry attempts have failed.
 If retry is not enabled then the error method will be called immediately.
 
 If the error method itself encounters an error then the task enters an error
-state and it will be marked as failed unless the `continueOnError` option is
+state and it will be marked as failed unless the `ignoreError` option is
 specified.
 
 The error method will be called with the same args as the step method unless an
 `input` map is specified. The `error` will always be added to the args.
 
-The return value from the error method will be stored but not merged into the
-shared state `data` unless an `output` map is specified.
+If `error` returns a value that value will be only be merged into the task
+`data` if an `output` map is defined.
 
 ### Error retry
 
@@ -324,8 +336,11 @@ shared state `data` unless an `output` map is specified.
 If `retry` is enabled then the error method can have its own `check` method that
 works exactly the same as the step `check` method.
 
-The check method will be called with the exact same arguments as the error
-method.
+The `check` method will be called with custom arguments if it has an `input`
+map defined. Otherwise it will fall back to the `error` or `method` arguments.
+
+If `check` returns a value that value will be only be merged into the task
+`data` if an `output` map is defined.
 
 ### Error retry with check retry
 
@@ -357,11 +372,11 @@ method.
 The `reverse` method will be called if the step it is defined for completed
 successfully but a later step encountered an error.
 
-The reverse method will be called with the same arguments as the step method
+The `reverse` method will be called with the same arguments as the step method
 unless an `input` map is specified.
 
-The return value from the `reverse` method will be stored but not merged into
-the shared state `data` unless an `output` map is specified.
+If `reverse` returns a value that value will be only be merged into the task
+`data` if an `output` map is defined.
 
 ### Reverse retry
 
@@ -393,8 +408,11 @@ the shared state `data` unless an `output` map is specified.
 If `retry` is enabled then the `reverse` method can have its own `check` method
 that works exactly the same as the step `check` method.
 
-The check method will be called with the exact same arguments as the `reverse`
-method (which are the same as the step `method`).
+The `check` method will be called with custom arguments if it has an `input`
+map defined. Otherwise it will fall back to the `reverse` or `method` arguments.
+
+If `check` returns a value that value will be only be merged into the task
+`data` if an `output` map is defined.
 
 ### Reverse retry with check retry
 
@@ -474,16 +492,6 @@ for the task data.
 
 If `output` is defined then only the properties in the output map will be
 merged into the task data.
-
-### Benefits of strictly defined input/output for all steps
-
-When the input and output is defined for each step then the task runner can
-automatically determine the data dependencies between steps and decide which
-steps are safe to run `async`.
-
-Strictly defined input/output will also typically result in much less data
-being passed to each method call and stored in the task data. This makes task
-execution more efficient and easier to analyze, moodify and debug.
 
 ## Task runner
 

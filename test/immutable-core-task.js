@@ -103,24 +103,24 @@ describe('immutable-core-task', function () {
         assert.isTrue(ImmutableCore.hasMethod('fooTask.foo'))
     })
 
-    it('should set continueOnError flag for task', async function () {
+    it('should set ignoreError flag for task', async function () {
         var task = new ImmutableCoreTask({
-            continueOnError: true,
+            ignoreError: true,
             methods: { bar: () => {} },
             name: 'foo',
             steps: [ { method: 'bar' } ],
         })
         // check that flag set
-        assert.isTrue(task.continueOnError)
+        assert.isTrue(task.ignoreError)
     })
 
-    it('should throw error on invalid continueOnError value', async function () {
+    it('should throw error on invalid ignoreError value', async function () {
         assert.throws(() => new ImmutableCoreTask({
-            continueOnError: 1,
+            ignoreError: 1,
             methods: { bar: () => {} },
             name: 'foo',
             steps: [ { method: 'bar' } ],
-        }), 'ImmutableCoreTask.foo Error: continueOnError must be boolean')
+        }), 'ImmutableCoreTask.foo Error: ignoreError must be boolean')
     })
 
 })

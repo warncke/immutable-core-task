@@ -238,26 +238,26 @@ describe('immutable-core-task step error', function () {
         }), 'ImmutableCoreTask.foo Error: error retry must be true when check method set')
     })
 
-    it('should set continueOnError flag for step', async function () {
+    it('should set ignoreError flag for step', async function () {
         var task = new ImmutableCoreTask({
             methods: { bar: () => {}, foo: () => {} },
             name: 'foo',
-            steps: [ { method: 'bar', error: 'foo', continueOnError: true } ],
+            steps: [ { method: 'bar', error: 'foo', ignoreError: true } ],
         })
         // check that steps added with default options set
         assert.deepEqual(task.steps, [{
-            continueOnError: true,
+            ignoreError: true,
             error: { method: 'fooTask.foo' },
             method: 'fooTask.bar',
         }])
     })
 
-    it('should throw error on invalid continueOnError value', async function () {
+    it('should throw error on invalid ignoreError value', async function () {
         assert.throws(() => new ImmutableCoreTask({
             methods: { bar: () => {}, foo: () => {} },
             name: 'foo',
-            steps: [ { method: 'bar', error: 'foo', continueOnError: 1 } ],
-        }), 'ImmutableCoreTask.foo Error: continueOnError must be boolean')
+            steps: [ { method: 'bar', error: 'foo', ignoreError: 1 } ],
+        }), 'ImmutableCoreTask.foo Error: ignoreError must be boolean')
     })
 
 })
