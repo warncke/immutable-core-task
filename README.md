@@ -164,7 +164,7 @@ the task and attempt to complete it.
 ### Task ignoreError
 
     const orderTask = new ImmutableCoreTask({
-        : true
+        ignoreError: true
     })
 
 When `ignoreError` is set to true then tasks will continue to process and
@@ -562,9 +562,16 @@ task or will be `NULL` if task execution has completed.
 | name          | type      | description                                      |
 |---------------|-----------|--------------------------------------------------|
 | complete      | boolean   | set true when task instance execution complete   |
+| error         | object    | record of sub-step errors                        |
+| retry         | boolean   | set true when next step should be retry of last  |
+| reverse       | boolean   | set to true if running reverse method(s)         |
 | running       | boolean   | true when step is being executed                 |
-| step          | integer   | current or next step to execute                  |
+| subStep       | string    | sub-step name: method, check, error, etc         |
+| step          | object    | specification of current step                    |
+| stepNum       | integer   | number of current step - starting at zero        |
 | success       | boolean   | set true if complete without unhandled errors    |
+| successOrig   | boolean   | original success value before running reverse    |
+| try           | object    | record of try counts for sub-steps               |
 
 ### Running first step of task
 

@@ -32,12 +32,11 @@ const connectionParams = {
     user: dbUser,
 }
 
-describe('immutable-core-task-instance run reverse', function () {
+describe('immutable-core-task-instance run reverse retry', function () {
 
     var instance, instanceModel, task, taskModel, sandbox
 
-    var check1, error1, error3, errorCheck1, method1, method2, method3,
-        reverse1, reverseCheck1
+    var method1, method2, method3, reverse1, reverseCheck1, reverse2
 
     // create database connection to use for testing
     var database = new ImmutableDatabaseMariaSQL(connectionParams)
@@ -51,15 +50,12 @@ describe('immutable-core-task-instance run reverse', function () {
     beforeEach(async function () {
         sandbox = sinon.sandbox.create()
         // create stubs for task methods
-        check1 = sandbox.stub()
-        error1 = sandbox.stub()
-        error3 = sandbox.stub()
-        errorCheck1 = sandbox.stub()
         method1 = sandbox.stub()
         method2 = sandbox.stub()
         method3 = sandbox.stub()
         reverse1 = sandbox.stub()
         reverseCheck1 = sandbox.stub()
+        reverse2 = sandbox.stub()
         // initialize models
         var models = await initModels({database, session})
         instanceModel = models.instanceModel
@@ -68,24 +64,34 @@ describe('immutable-core-task-instance run reverse', function () {
         task = new ImmutableCoreTask({
             instanceModel: instanceModel,
             methods: {
-                error3: error3,
                 method1: method1,
                 method2: method2,
                 method3: method3,
                 reverse1: reverse1,
                 reverseCheck1: reverseCheck1,
+                reverse2: reverse2,
             },
             name: 'foo',
             steps: [
                 {
                     method: 'method1',
-                    reverse: 'reverse1',
+                    reverse: {
+                        check: {
+                            method: 'reverseCheck1',
+                            retry: true,
+                        },
+                        method: 'reverse1',
+                        retry: true,
+                    } 
                 },
                 {
                     method: 'method2',
+                    reverse: {
+                        method: 'reverse2',
+                        retry: true,
+                    },
                 },
                 {
-                    error: 'error3',
                     method: 'method3',
                 },
             ],
@@ -107,22 +113,33 @@ describe('immutable-core-task-instance run reverse', function () {
         database.close()
     })
 
-    describe('when method without error handler fails', function () {
+    describe('when reverse method has error', function () {
 
         beforeEach(function () {
             method1.resolves()
-            method2.rejects()
+            method2.resolves()
+            method3.rejects()
             reverse1.resolves()
+            // reject on first call
+            reverse2.onCall(0).rejects()
+            // resolve on second call
+            reverse2.onCall(1).resolves()
         })
 
-        it('should run reverse', async function () {
+        it('should retry reverse', async function () {
             // run task
             await instance.run()
+            // reload instance data
+            await instance.reload()
+            // check data state
+            assert.isFalse(instance.record.data.complete)
+            assert.isUndefined(instance.record.data.success)
+            // run again
+            await instance.run()
             // check that methods run
-            assert.calledOnce(method1)
-            assert.calledOnce(method2)
             assert.calledOnce(reverse1)
-            // reload data
+            assert.calledTwice(reverse2)
+            // reload instance data
             await instance.reload()
             // check data state
             assert.isTrue(instance.record.data.complete)
@@ -131,19 +148,34 @@ describe('immutable-core-task-instance run reverse', function () {
 
     })
 
-    describe('when method with reverse method fails', function () {
+    describe('when reverse method with check has error', function () {
 
         beforeEach(function () {
-            method1.rejects()
+            method1.resolves()
+            method2.resolves()
+            method3.rejects()
+            reverse2.resolves()
+            // reject on first call
+            reverse1.onCall(0).rejects()
+            // resolve on second call
+            reverse1.onCall(1).resolves()
         })
 
-        it('should not run reverse on method that did not succeed', async function () {
+        it('should call check method before calling reverse', async function () {
             // run task
             await instance.run()
+            // reload instance data
+            await instance.reload()
+            // check data state
+            assert.isFalse(instance.record.data.complete)
+            assert.isUndefined(instance.record.data.success)
+            // run again
+            await instance.run()
             // check that methods run
-            assert.calledOnce(method1)
-            assert.notCalled(reverse1)
-            // reload data
+            assert.calledTwice(reverse1)
+            assert.calledOnce(reverseCheck1)
+            assert.calledOnce(reverse2)
+            // reload instance data
             await instance.reload()
             // check data state
             assert.isTrue(instance.record.data.complete)
@@ -152,54 +184,35 @@ describe('immutable-core-task-instance run reverse', function () {
 
     })
 
-    describe('when method with error handler fails and error handler succeeds', function () {
+    describe('when reverse check method resolves with value', function () {
 
         beforeEach(function () {
             method1.resolves()
             method2.resolves()
             method3.rejects()
-            error3.resolves()
-            reverse1.resolves()
+            reverse2.resolves()
+            reverseCheck1.resolves({})
+            // reject on first call
+            reverse1.onCall(0).rejects()
+            // resolve on second call
+            reverse1.onCall(1).resolves()
         })
 
-        it('should run reverse', async function () {
+        it('should not call reverse method again', async function () {
             // run task
             await instance.run()
-            // check that methods run
-            assert.calledOnce(method1)
-            assert.calledOnce(method2)
-            assert.calledOnce(method3)
-            assert.calledOnce(error3)
-            assert.calledOnce(reverse1)
-            // reload data
+            // reload instance data
             await instance.reload()
             // check data state
-            assert.isTrue(instance.record.data.complete)
-            assert.isTrue(instance.record.data.success)
-        })
-
-    })
-
-    describe('when method with error handler fails and error handler fails', function () {
-
-        beforeEach(function () {
-            method1.resolves()
-            method2.resolves()
-            method3.rejects()
-            error3.rejects()
-            reverse1.resolves()
-        })
-
-        it('should run reverse', async function () {
-            // run task
+            assert.isFalse(instance.record.data.complete)
+            assert.isUndefined(instance.record.data.success)
+            // run again
             await instance.run()
             // check that methods run
-            assert.calledOnce(method1)
-            assert.calledOnce(method2)
-            assert.calledOnce(method3)
-            assert.calledOnce(error3)
             assert.calledOnce(reverse1)
-            // reload data
+            assert.calledOnce(reverseCheck1)
+            assert.calledOnce(reverse2)
+            // reload instance data
             await instance.reload()
             // check data state
             assert.isTrue(instance.record.data.complete)
@@ -208,26 +221,43 @@ describe('immutable-core-task-instance run reverse', function () {
 
     })
 
-    describe('when method with error handler fails and error handler succeeds but reverse method fails', function () {
+    describe('when reverse check method has error', function () {
 
         beforeEach(function () {
             method1.resolves()
             method2.resolves()
             method3.rejects()
-            error3.resolves()
-            reverse1.rejects()
+            reverse2.resolves()
+            // reject on first call
+            reverse1.onCall(0).rejects()
+            reverseCheck1.onCall(0).rejects()
+            // resolve on second call
+            reverse1.onCall(1).resolves()
+            reverseCheck1.onCall(1).resolves()
         })
 
-        it('should run reverse', async function () {
+        it('should retry reverse check method', async function () {
             // run task
             await instance.run()
+            // reload instance data
+            await instance.reload()
+            // check data state
+            assert.isFalse(instance.record.data.complete)
+            assert.isUndefined(instance.record.data.success)
+            // run again
+            await instance.run()
+            // reload instance data
+            await instance.reload()
+            // check data state
+            assert.isFalse(instance.record.data.complete)
+            assert.isUndefined(instance.record.data.success)
+            // run again
+            await instance.run()
             // check that methods run
-            assert.calledOnce(method1)
-            assert.calledOnce(method2)
-            assert.calledOnce(method3)
-            assert.calledOnce(error3)
-            assert.calledOnce(reverse1)
-            // reload data
+            assert.calledTwice(reverse1)
+            assert.calledTwice(reverseCheck1)
+            assert.calledOnce(reverse2)
+            // reload instance data
             await instance.reload()
             // check data state
             assert.isTrue(instance.record.data.complete)
