@@ -21,7 +21,6 @@ context of a single process.
         name: 'order',
         steps: [
             {
-                async: true,
                 method: 'module.email.orderReceived',
             },
             {
@@ -45,7 +44,6 @@ context of a single process.
                 method: 'checkDeliveryStatus',
             },
             {
-                async: true,
                 method: 'module.email.orderDelivered',
             },
             {
