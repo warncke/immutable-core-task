@@ -32,7 +32,7 @@ const connectionParams = {
     user: dbUser,
 }
 
-describe.only('immutable-core-task-instance run ignore error', function () {
+describe('immutable-core-task-instance run ignore error', function () {
 
     var instance, instanceModel, task, taskModel, sandbox
 
