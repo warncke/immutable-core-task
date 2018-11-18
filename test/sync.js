@@ -2,7 +2,6 @@
 
 /* npm modules */
 const ImmutableCore = require('immutable-core')
-const ImmutableDatabaseMariaSQL = require('immutable-database-mariasql')
 const ImmutableGlobal = require('immutable-global')
 const ImmutableCoreModel = require('immutable-core-model')
 const Promise = require('bluebird')
@@ -22,8 +21,7 @@ const dbPass = process.env.DB_PASS || ''
 const dbUser = process.env.DB_USER || 'root'
 
 const connectionParams = {
-    charset: 'utf8',
-    db: dbName,
+    database: dbName,
     host: dbHost,
     password: dbPass,
     user: dbUser,
@@ -31,10 +29,8 @@ const connectionParams = {
 
 describe('immutable-core-task sync', function () {
 
-    var taskModel, taskModelGlobal
+    var mysql, taskModel, taskModelGlobal
 
-    // create database connection to use for testing
-    var database = new ImmutableDatabaseMariaSQL(connectionParams)
     // fake session to use for testing
     var session = {
         accountId: '11111111111111111111111111111111',
@@ -43,8 +39,9 @@ describe('immutable-core-task sync', function () {
     }
 
     before(async function () {
+        mysql = await ImmutableCoreModel.createMysqlConnection(connectionParams)
         // drop any test tables if they exist
-        await database.query('DROP TABLE IF EXISTS task')
+        await mysql.query('DROP TABLE IF EXISTS task')
     })
 
     beforeEach(async function () {
@@ -61,7 +58,7 @@ describe('immutable-core-task sync', function () {
                     unique: true,
                 },
             },
-            database: database,
+            mysql: mysql,
             name: 'task',
         })
         // sync model
@@ -70,8 +67,8 @@ describe('immutable-core-task sync', function () {
         taskModel = taskModelGlobal.session(session)
     })
 
-    after(function () {
-        database.close()
+    after(async function () {
+        await mysql.close()
     })
 
     it('should sync task with task model', async function () {

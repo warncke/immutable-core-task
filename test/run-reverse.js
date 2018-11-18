@@ -3,7 +3,6 @@
 /* npm modules */
 const ImmutableAI = require('immutable-ai')
 const ImmutableCore = require('immutable-core')
-const ImmutableDatabaseMariaSQL = require('immutable-database-mariasql')
 const ImmutableGlobal = require('immutable-global')
 const ImmutableCoreModel = require('immutable-core-model')
 const Promise = require('bluebird')
@@ -19,28 +18,13 @@ const initModels = require('./lib/init-models')
 const assert = chai.assert
 sinon.assert.expose(chai.assert, { prefix: '' })
 
-const dbHost = process.env.DB_HOST || 'localhost'
-const dbName = process.env.DB_NAME || 'test'
-const dbPass = process.env.DB_PASS || ''
-const dbUser = process.env.DB_USER || 'root'
-
-const connectionParams = {
-    charset: 'utf8',
-    db: dbName,
-    host: dbHost,
-    password: dbPass,
-    user: dbUser,
-}
-
 describe('immutable-core-task-instance run reverse', function () {
 
-    var instance, instanceModel, task, taskModel, sandbox
+    var instance, instanceModel, mysql, task, taskModel, sandbox
 
     var check1, error1, error3, errorCheck1, method1, method2, method3,
         reverse1, reverseCheck1
 
-    // create database connection to use for testing
-    var database = new ImmutableDatabaseMariaSQL(connectionParams)
     // fake session to use for testing
     var session = {
         accountId: '11111111111111111111111111111111',
@@ -49,7 +33,7 @@ describe('immutable-core-task-instance run reverse', function () {
     }
 
     beforeEach(async function () {
-        sandbox = sinon.sandbox.create()
+        sandbox = sinon.createSandbox()
         // create stubs for task methods
         check1 = sandbox.stub()
         error1 = sandbox.stub()
@@ -61,9 +45,10 @@ describe('immutable-core-task-instance run reverse', function () {
         reverse1 = sandbox.stub()
         reverseCheck1 = sandbox.stub()
         // initialize models
-        var models = await initModels({database, session})
+        var models = await initModels({session})
         instanceModel = models.instanceModel
         taskModel = models.taskModel
+        mysql = models.mysql
         // create foo task
         task = new ImmutableCoreTask({
             instanceModel: instanceModel,
@@ -99,12 +84,9 @@ describe('immutable-core-task-instance run reverse', function () {
         })
     })
 
-    afterEach(function () {
+    afterEach(async function () {
         sandbox.restore()
-    })
-
-    after(function () {
-        database.close()
+        await mysql.close()
     })
 
     describe('when method without error handler fails', function () {

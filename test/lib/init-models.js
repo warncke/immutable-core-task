@@ -6,21 +6,36 @@ const ImmutableGlobal = require('immutable-global')
 const ImmutableCoreModel = require('immutable-core-model')
 
 /* exports */
-module.exports = beforeEach
+module.exports = initModels
+
+/* globals */
+const dbHost = process.env.DB_HOST || 'localhost'
+const dbName = process.env.DB_NAME || 'test'
+const dbPass = process.env.DB_PASS || ''
+const dbUser = process.env.DB_USER || 'root'
+
+const connectionParams = {
+    database: dbName,
+    host: dbHost,
+    password: dbPass,
+    user: dbUser,
+}
 
 /**
  * @function beforeEach
  *
  * shared initialization for tests
  */
-async function beforeEach (args) {
+async function initModels (args) {
     // reset global data
     ImmutableCore.reset()
     ImmutableCoreModel.reset()
     ImmutableGlobal.reset()
+    // create mysql client
+    const mysql = await ImmutableCoreModel.createMysqlConnection(connectionParams)
     // drop any test tables if they exist
-    await args.database.query('DROP TABLE IF EXISTS task')
-    await args.database.query('DROP TABLE IF EXISTS taskInstance')
+    await mysql.query('DROP TABLE IF EXISTS task')
+    await mysql.query('DROP TABLE IF EXISTS taskInstance')
     // create task model
     var taskModelGlobal = new ImmutableCoreModel({
         columns: {
@@ -31,7 +46,7 @@ async function beforeEach (args) {
             },
         },
         compression: false,
-        database: args.database,
+        mysql: mysql,
         name: 'task',
     })
     // create instance model
@@ -49,7 +64,7 @@ async function beforeEach (args) {
             },
         },
         compression: false,
-        database: args.database,
+        mysql: mysql,
         name: 'taskInstance',
     })
     // sync models
@@ -59,5 +74,5 @@ async function beforeEach (args) {
     var taskModel = taskModelGlobal.session(args.session)
     var instanceModel = instanceModelGlboal.session(args.session)
 
-    return {instanceModel, taskModel}
+    return {instanceModel, mysql, taskModel}
 }

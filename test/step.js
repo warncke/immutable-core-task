@@ -23,7 +23,7 @@ describe('immutable-core-task step', function () {
         ImmutableCore.reset()
         ImmutableCoreTask.reset()
         // create sinon sandbox
-        sandbox = sinon.sandbox.create()
+        sandbox = sinon.createSandbox()
     })
 
     afterEach(function () {
